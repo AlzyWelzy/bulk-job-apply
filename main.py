@@ -80,42 +80,61 @@ def build_message(to_email, subject, body):
     return msg
 
 
-# -------- Main --------
+def create_server():
+    server = smtplib.SMTP(SMTP_SERVER, SMTP_PORT)
+    server.starttls()
+    server.login(EMAIL, PASSWORD)
+    return server
+
+
 def main():
-    # Load CSV
     df = pd.read_csv(CSV_FILE)
 
-    # Clean data
     df = df.dropna(subset=["Email"])
     df["Email"] = df["Email"].str.strip().str.lower()
     df = df.drop_duplicates(subset=["Email"])
 
     print(f"Total emails after cleaning: {len(df)}")
 
-    # Open ONE SMTP connection
-    with smtplib.SMTP(SMTP_SERVER, SMTP_PORT) as server:
-        server.starttls()
-        server.login(EMAIL, PASSWORD)
+    server = create_server()
+    sent_count = 0
 
-        for index, row in df.iterrows():
-            email = row["Email"]
-            company = str(row.get("Company", "")).strip()
+    for index, row in df.iterrows():
+        email = row["Email"]
+        company = str(row.get("Company", "")).strip()
 
-            # subject = f"Backend Developer (Django | AI Systems | SaaS) – {company}"
-            subject = f"Application: Backend, AI Systems & SaaS Engineering – {company}"
-            body = generate_email(row)
+        subject = f"Application: Backend, AI Systems & SaaS Engineering – {company}"
+        body = generate_email(row)
 
+        try:
+            msg = build_message(email, subject, body)
+            server.send_message(msg)
+
+            print(f"[{index}] Sent to {email}")
+            sent_count += 1
+
+            # 🔥 Reconnect every 30 emails (CRITICAL FIX)
+            if sent_count % 30 == 0:
+                print("Reconnecting SMTP...")
+                server.quit()
+                time.sleep(5)
+                server = create_server()
+
+            time.sleep(5)
+
+        except Exception as e:
+            print(f"[{index}] Failed: {email} -> {e}")
+
+            # 🔥 Try reconnect on failure
             try:
-                msg = build_message(email, subject, body)
-                server.send_message(msg)
+                server.quit()
+            except:
+                pass
 
-                print(f"[{index}] Sent to {email}")
+            time.sleep(5)
+            server = create_server()
 
-                # Delay (IMPORTANT)
-                time.sleep(25)
-
-            except Exception as e:
-                print(f"[{index}] Failed: {email} -> {e}")
+    server.quit()
 
 
 if __name__ == "__main__":
