@@ -18,7 +18,9 @@ SMTP_SERVER = "smtp.gmail.com"
 SMTP_PORT = 587
 
 CSV_FILE = "hr_contacts.csv"
-RESUME_PATH = "Manvendra_Rajpoot_Resume.pdf"
+RESUME_PATH = os.getenv("RESUME_PATH")
+
+NAME = os.getenv("NAME")
 
 
 # -------- Email Content --------
@@ -51,7 +53,7 @@ I also have experience with Docker, Kubernetes, CI/CD, and database optimization
 I’ve attached my resume for your review.
 
 Best regards,
-Manvendra Rajpoot
+{NAME}
 """
 
 
@@ -72,7 +74,7 @@ def build_message(to_email, subject, body):
     encoders.encode_base64(part)
     part.add_header(
         "Content-Disposition",
-        "attachment; filename=Manvendra_Rajpoot_Resume.pdf",
+        f"attachment; filename={RESUME_PATH}",
     )
 
     msg.attach(part)
